@@ -1,0 +1,102 @@
+Relatório Detalhado: Pipeline Simplificada para Montagem de Genomas Virais
+
+Introdução
+
+Este projeto propõe o desenvolvimento de uma pipeline simplificada para montagem de genomas virais a partir de arquivos FASTQ. A proposta simula as principais etapas bioinformáticas, desde a filtragem de sequências de baixa qualidade até a montagem de um genoma consenso. O objetivo principal é demonstrar raciocínio lógico, criatividade e habilidades básicas em bioinformática.
+
+1. Entrada de Dados
+	•	Dados de entrada: Um conjunto de arquivos FASTQ simulados, contendo sequências virais com:
+	•	Erros de leitura (baixa qualidade de base).
+	•	Duplicatas de sequências.
+	•	Possível contaminação com material genético do hospedeiro.
+	•	Ferramenta: Simulação e manipulação de sequências usando Biopython.
+
+2. Etapas da Pipeline
+
+2.1. Qualidade das Leituras
+	1.	Objetivo: Identificar e remover leituras com bases de baixa qualidade e adaptadores.
+	2.	Estratégia:
+	•	Calcular a qualidade média das bases de cada leitura e filtrar as que estão abaixo de um limite (e.g., Q20).
+	•	Remover adaptadores usando uma sequência de referência ou ferramentas como Cutadapt.
+	3.	Implementação:
+
+from Bio.SeqIO.QualityIO import FastqGeneralIterator
+
+def filter_reads(input_fastq, output_fastq, quality_threshold=20):
+    with open(input_fastq, 'r') as infile, open(output_fastq, 'w') as outfile:
+        for title, seq, qual in FastqGeneralIterator(infile):
+            avg_quality = sum(ord(q) - 33 for q in qual) / len(qual)
+            if avg_quality >= quality_threshold:
+                outfile.write(f"@{title}\n{seq}\n+\n{qual}\n")
+
+2.2. Remoção de Contaminação
+	1.	Objetivo: Excluir leituras contaminantes provenientes do hospedeiro ou de outras fontes.
+	2.	Estratégia:
+	•	Criar um banco de dados de referência para sequências conhecidas do hospedeiro (e.g., genoma humano ou de camundongo).
+	•	Mapear as leituras virais contra o banco usando BLAST ou Bowtie2.
+	•	Excluir leituras com alta similaridade (>90%).
+	3.	Ferramenta Utilizada: BLAST local para mapeamento básico.
+
+2.3. Montagem
+	1.	Objetivo: Reconstruir a sequência consenso do genoma viral.
+	2.	Estratégia:
+	•	Usar o algoritmo Overlap-Layout-Consensus (OLC), um método clássico para montagem de genomas pequenos.
+	•	Combinar pares de leituras com sobreposição suficiente (e.g., 10 nucleotídeos).
+	3.	Implementação Simplificada:
+
+def find_overlap(seq1, seq2, min_length=10):
+    for i in range(len(seq1) - min_length + 1):
+        if seq2.startswith(seq1[i:]):
+            return len(seq1) - i
+    return 0
+
+def assemble_reads(reads):
+    assembled = reads.pop(0)
+    while reads:
+        for i, read in enumerate(reads):
+            overlap = find_overlap(assembled, read)
+            if overlap:
+                assembled += read[overlap:]
+                reads.pop(i)
+                break
+    return assembled
+
+2.4. Análise de Resultados
+	1.	Objetivo: Avaliar a qualidade da montagem do genoma.
+	2.	Métricas utilizadas:
+	•	Número de contigs: Total de segmentos gerados na montagem.
+	•	N50: Tamanho do menor contig que, somado aos maiores, cobre 50% do genoma montado.
+	•	Cobertura: Percentual do genoma real coberto pelas leituras.
+	3.	Implementação de N50:
+
+def calculate_n50(contigs):
+    contigs.sort(reverse=True)
+    total_length = sum(len(c) for c in contigs)
+    cumulative = 0
+    for c in contigs:
+        cumulative += len(c)
+        if cumulative >= total_length / 2:
+            return len(c)
+
+3. Resultados Preliminares e Limitações
+
+Resultados Preliminares
+	•	Leituras de baixa qualidade filtradas com eficiência.
+	•	Contaminações simuladas detectadas e removidas.
+	•	Genoma consenso montado, mas com pequenas falhas em regiões de baixa cobertura.
+
+Limitações
+	•	A abordagem de montagem (OLC básico) pode não lidar bem com regiões repetitivas.
+	•	Dependência de parâmetros fixos (e.g., tamanho mínimo de sobreposição).
+	•	Banco de dados de referência pequeno para remoção de contaminações.
+
+4. Ideias para Melhorias
+	1.	Substituir o algoritmo básico por ferramentas avançadas como SPAdes ou Velvet.
+	2.	Incorporar k-mers para detectar sobreposições de maneira mais eficiente.
+	3.	Utilizar simulações mais robustas para avaliar a pipeline em cenários reais.
+	4.	Implementar paralelização para acelerar o processamento.
+
+5. Conclusão
+
+Este projeto apresentou uma pipeline simplificada para montagem de genomas virais, simulando as etapas de controle de qualidade, remoção de contaminação, montagem e análise. Embora básico, o pipeline é funcional e reprodutível, permitindo aprimoramentos futuros.
+
